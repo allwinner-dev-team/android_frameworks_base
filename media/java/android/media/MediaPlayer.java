@@ -18,12 +18,15 @@ package android.media;
 
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.pm.PermissionInfo;
 import android.content.res.AssetFileDescriptor;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Parcel;
+import android.os.ServiceManager;
+import android.os.RemoteException;
 import android.os.Parcelable;
 import android.os.ParcelFileDescriptor;
 import android.os.PowerManager;
@@ -33,6 +36,7 @@ import android.view.SurfaceHolder;
 import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.media.AudioManager;
+import android.content.pm.IPackageManager;
 
 import java.io.File;
 import java.io.FileDescriptor;
@@ -42,6 +46,8 @@ import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.Set;
 import java.lang.ref.WeakReference;
+import android.view.WindowManager;
+import android.view.IWindowManager;
 
 /**
  * MediaPlayer class can be used to control playback
@@ -545,6 +551,13 @@ public class MediaPlayer
      */
     public static final boolean BYPASS_METADATA_FILTER = false;
 
+    /**
+    *  screen name
+    */
+    private IWindowManager 	mWindowManager;
+    private IPackageManager 	mPackageManager;
+    public static final int MASTER_SCREEN = 0;
+    public static final int SLAVE_SCREEN  = 1;
     static {
         System.loadLibrary("media_jni");
         native_init();
@@ -587,6 +600,8 @@ public class MediaPlayer
          * It's easier to create it here than in C++.
          */
         native_setup(new WeakReference<MediaPlayer>(this));
+        mWindowManager = IWindowManager.Stub.asInterface(ServiceManager.getService("window"));
+        mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
     }
 
     /*
@@ -666,6 +681,13 @@ public class MediaPlayer
             surface = null;
         }
         _setVideoSurface(surface);
+        if(mWindowManager != null)
+        {
+            try	{
+                mWindowManager.updateRotation(true, false);
+            } catch (RemoteException e) {
+            }
+        }
         updateSurfaceScreenOn();
     }
 
@@ -2408,4 +2430,524 @@ public class MediaPlayer
         return (mode == VIDEO_SCALING_MODE_SCALE_TO_FIT ||
                 mode == VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
     }
+    
+    public static native void setScreen(int screen) throws IllegalStateException;
+    public static native int  getScreen();
+    public static native boolean  isPlayingVideo();
+
+    public static final int SUBTITLE_TYPE_TEXT = 0;
+    public static final int SUBTITLE_TYPE_BITMAP = 1;
+
+    public static class SubInfo{
+        public byte[]  name;
+        public String  charset;
+        public int     type;   // text or bitmap
+
+        public SubInfo(byte[] oName, String oCharset, int oType){
+            name = oName;
+            charset = oCharset;
+            type = oType;
+        }
+    };
+
+    /**
+     * Get the subtitle list of the current playing video.
+     * <p>
+     *
+     * @return subtitle list. null means there is no subtitle.
+     */
+    public native SubInfo[] getSubList();
+
+    /**
+     * get the index of the current showing subtitle in the subtitle list.
+     * <p>
+     *
+     * @return the index of the current showing subtitle in the subtitle list. <0 means no subtitle.
+     */
+    public native int getCurSub();
+
+    /**
+     * switch another subtitle to show.
+     * <p>
+     *
+     * @param index the subtitle\A1\AFs index in the subtitle list\A1\A3
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public native int switchSub(int index);
+
+    /**
+     * show or hide a subitle.
+     * <p>
+     *
+     * @param showSub  whether to show subtitle or not
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public native int setSubGate(boolean showSub);
+
+    /**
+     * check whether subtitles is allowed showing.
+     * <p>
+     *
+     * @return true if subtitles is allowed showing, false otherwise.
+     */
+    public native boolean getSubGate();
+
+    /**
+     * Set the subtitle\A1\AFs color.
+     * <p>
+     *
+     * @param color  subtitle\A1\AFs color.
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public native int setSubColor(int color);
+
+    /**
+     * Get the subtitle\A1\AFs color.
+     * <p>
+     *
+     * @return the subtitle\A1\AFs color.
+     */
+    public native int getSubColor();
+
+    /**
+     * Set the subtitle frame\A1\AFs color.
+     * <p>
+     *
+     * @param color  subtitle frame\A1\AFs color.
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public native int setSubFrameColor(int color);
+
+    /**
+     * Get the subtitle frame\A1\AFs color.
+     * <p>
+     *
+     * @return the subtitle frame\A1\AFs color.
+     */
+    public native int getSubFrameColor();
+
+    /**
+     * Set the subtitle\A1\AFs font size.
+     * <p>
+     *
+     * @param size  font size in pixel.
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public native int setSubFontSize(int size);
+
+    /**
+     * Get the subtitle\A1\AFs font size.
+     * <p>
+     *
+     * @return the subtitle\A1\AFs font size. <0 means failed.
+     */
+    public native int getSubFontSize();
+
+    /**
+     * Set the subtitle\A1\AFs charset. If the underlying mediaplayer can absolutely parse the charset 
+     * of the subtitles, still use the parsed charset; otherwise, use the charset argument.
+     * <p>
+     *
+     * @param charset  the canonical name of a charset.
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public native int setSubCharset(String charset);
+
+    /**
+    * Get the subtitle\A1\AFs charset.
+    * <p>
+    *
+    * @return the canonical name of a charset.
+    */
+    public native String getSubCharset();
+
+    /**
+     * Set the subtitle\A1\AFs position vertically in the screen.
+     * <p>
+     *
+     * @param percent
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public native int setSubPosition(int percent);
+
+    /**
+     * Get the subtitle\A1\AFs position vertically in the screen.
+     * <p>
+     *
+     * @return percent
+     */
+    public native int getSubPosition();
+
+    /**
+     * Set the subtitle\A1\AFs delay time.
+     * <p>
+     *
+     * @param time delay time in milliseconds. It can be <0.
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public native int setSubDelay(int time);
+
+    /**
+     * Get the subtitle\A1\AFs delay time.
+     * <p>
+     *
+     * @return delay time in milliseconds.
+     */
+    public native int getSubDelay();
+
+    public static class A10TrackInfo{
+        public byte[]  name;
+        public String  charset;
+
+        public A10TrackInfo(byte[] oName, String oCharset){
+            name = oName;
+            charset = oCharset;
+        }
+    };
+
+    /**
+     * Get the track list of the current playing video.
+     * <p>
+     *
+     * @return track list. null means there is no track.
+     */
+    public native TrackInfo[] getTrackList();
+
+    /**
+     * get the index of the current track in the track list.
+     * <p>
+     *
+     * @return the index of the current track in the track list. <0 means no track.
+     */
+    public native int getCurTrack();
+
+    /**
+     * switch another track to play.
+     * <p>
+     *
+     * @param index the track\A1\AFs index in the track list\A1\A3
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public native int switchTrack(int index);
+
+    /**
+     * charset list
+     */
+    public static final String CHARSET_UNKNOWN                   = "UNKNOWN";                       //\CE޷\A8ʶ\B1\F0\B3\F6\C0\B4\B5\C4\D7ַ\FB\BC\AF
+    public static final String CHARSET_BIG5                      = "Big5";                          //\B7\B1\CC\E5\D6\D0\CE\C4
+    public static final String CHARSET_BIG5_HKSCS                = "Big5-HKSCS";                    //
+    public static final String CHARSET_BOCU_1                    = "BOCU-1";                        //
+    public static final String CHARSET_CESU_8                    = "CESU-8";                        //
+    public static final String CHARSET_CP864                     = "cp864";                         //
+    public static final String CHARSET_EUC_JP                    = "EUC-JP";                        //
+    public static final String CHARSET_EUC_KR                    = "EUC-KR";                        //
+    public static final String CHARSET_GB18030                   = "GB18030";                       //
+    public static final String CHARSET_GBK                       = "GBK";                           //\BC\F2\CC\E5\D6\D0\CE\C4
+    public static final String CHARSET_HZ_GB_2312                = "HZ-GB-2312";                    //
+    public static final String CHARSET_ISO_2022_CN               = "ISO-2022-CN";                   //
+    public static final String CHARSET_ISO_2022_CN_EXT           = "ISO-2022-CN-EXT";               //
+    public static final String CHARSET_ISO_2022_JP               = "ISO-2022-JP";                   //
+    public static final String CHARSET_ISO_2022_KR               = "ISO-2022-KR";                   //\BA\AB\CE\C4
+    public static final String CHARSET_ISO_8859_1                = "ISO-8859-1";                    //\CE\F7ŷ\D3\EFϵ
+    public static final String CHARSET_ISO_8859_10               = "ISO-8859-10";                   //\B1\B1ŷ˹\BF\B0\B5\C4\C4\C9ά\D1\C7\D3\EFϵ
+    public static final String CHARSET_ISO_8859_13               = "ISO-8859-13";                   //\B2\A8\C2޵ĺ\A3\D3\EFϵ                  
+    public static final String CHARSET_ISO_8859_14               = "ISO-8859-14";                   //\BF\AD\B6\FB\CC\D8\C8\CB\D3\EFϵ                  
+    public static final String CHARSET_ISO_8859_15               = "ISO-8859-15";                   //\C0\A9չ\C1˷\A8\D3\EF\BAͷ\D2\C0\BC\D3\EF\B5\C4\CE\F7ŷ\D3\EFϵ  
+    public static final String CHARSET_ISO_8859_16               = "ISO-8859-16";                   //\C0\A9չ\B5Ķ\AB\C4\CFŷ\D3\EFϵ   
+    public static final String CHARSET_ISO_8859_2                = "ISO-8859-2";                    //\D6\D0ŷ\D3\EF\D1\D4          
+    public static final String CHARSET_ISO_8859_3                = "ISO-8859-3";                    //\C4\CFŷ\D3\EF\D1\D4          
+    public static final String CHARSET_ISO_8859_4                = "ISO-8859-4";                    //\B1\B1ŷ\D3\EF\D1\D4          
+    public static final String CHARSET_ISO_8859_5                = "ISO-8859-5";                    //\CE\F7\C0\EF\B6\FB\D7\D6ĸ        
+    public static final String CHARSET_ISO_8859_6                = "ISO-8859-6";                    //\B0\A2\C0\AD\B2\AE\D3\EF          
+    public static final String CHARSET_ISO_8859_7                = "ISO-8859-7";                    //ϣ\C0\B0\D3\EF            
+    public static final String CHARSET_ISO_8859_8                = "ISO-8859-8";                    //ϣ\B2\AE\C0\B4\D3\EF
+    public static final String CHARSET_ISO_8859_9                = "ISO-8859-9";                    //\CD\C1\B6\FA\C6\E4\D3\EF  
+    public static final String CHARSET_KOI8_R                    = "KOI8-R";                        //\B6\ED\CE\C4
+    public static final String CHARSET_KOI8_U                    = "KOI8-U";                        //
+    public static final String CHARSET_MACINTOSH                 = "macintosh";                     //
+    public static final String CHARSET_SCSU                      = "SCSU";                          //
+    public static final String CHARSET_SHIFT_JIS                 = "Shift_JIS";                     //\C8\D5\CE\C4
+    public static final String CHARSET_TIS_620                   = "TIS-620";                       //̩\CE\C4
+    public static final String CHARSET_US_ASCII                  = "US-ASCII";                      //
+    public static final String CHARSET_UTF_16                    = "UTF-16";                        //
+    public static final String CHARSET_UTF_16BE                  = "UTF-16BE";                      //UTF16 big endian
+    public static final String CHARSET_UTF_16LE                  = "UTF-16LE";                      //UTF16 little endian
+    public static final String CHARSET_UTF_32                    = "UTF-32";                        //
+    public static final String CHARSET_UTF_32BE                  = "UTF-32BE";                      //
+    public static final String CHARSET_UTF_32LE                  = "UTF-32LE";                      //
+    public static final String CHARSET_UTF_7                     = "UTF-7";                         //
+    public static final String CHARSET_UTF_8                     = "UTF-8";                         //UTF8
+    public static final String CHARSET_WINDOWS_1250              = "windows-1250";                  //\D6\D0ŷ                 
+    public static final String CHARSET_WINDOWS_1251              = "windows-1251";                  //\CE\F7\C0\EF\B6\FB\CE\C4             
+    public static final String CHARSET_WINDOWS_1252              = "windows-1252";                  //\CD\C1\B6\FA\C6\E4\D3\EF
+    public static final String CHARSET_WINDOWS_1253              = "windows-1253";                  //ϣ\C0\B0\CE\C4     
+    public static final String CHARSET_WINDOWS_1254              = "windows-1254";                  //\CE\F7ŷ\D3\EFϵ
+    public static final String CHARSET_WINDOWS_1255              = "windows-1255";                  //ϣ\B2\AE\C0\B4\CE\C4             
+    public static final String CHARSET_WINDOWS_1256              = "windows-1256";                  //\B0\A2\C0\AD\B2\AE\CE\C4   
+    public static final String CHARSET_WINDOWS_1257              = "windows-1257";                  //\B2\A8\C2޵ĺ\A3\CE\C4 
+    public static final String CHARSET_WINDOWS_1258              = "windows-1258";                  //Խ\C4\CF       
+    public static final String CHARSET_X_DOCOMO_SHIFT_JIS_2007   = "x-docomo-shift_jis-2007";       //
+    public static final String CHARSET_X_GSM_03_38_2000          = "x-gsm-03.38-2000";              //
+    public static final String CHARSET_X_IBM_1383_P110_1999      = "x-ibm-1383_P110-1999";          //
+    public static final String CHARSET_X_IMAP_MAILBOX_NAME       = "x-IMAP-mailbox-name";           //
+    public static final String CHARSET_X_ISCII_BE                = "x-iscii-be";                    //
+    public static final String CHARSET_X_ISCII_DE                = "x-iscii-de";                    //
+    public static final String CHARSET_X_ISCII_GU                = "x-iscii-gu";                    //
+    public static final String CHARSET_X_ISCII_KA                = "x-iscii-ka";                    //
+    public static final String CHARSET_X_ISCII_MA                = "x-iscii-ma";                    //
+    public static final String CHARSET_X_ISCII_OR                = "x-iscii-or";                    //
+    public static final String CHARSET_X_ISCII_PA                = "x-iscii-pa";                    //
+    public static final String CHARSET_X_ISCII_TA                = "x-iscii-ta";                    //
+    public static final String CHARSET_X_ISCII_TE                = "x-iscii-te";                    //
+    public static final String CHARSET_X_ISO_8859_11_2001        = "x-iso-8859_11-2001";            //
+    public static final String CHARSET_X_JAVAUNICODE             = "x-JavaUnicode";                 //
+    public static final String CHARSET_X_KDDI_SHIFT_JIS_2007     = "x-kddi-shift_jis-2007";         //
+    public static final String CHARSET_X_MAC_CYRILLIC            = "x-mac-cyrillic";                //
+    public static final String CHARSET_X_SOFTBANK_SHIFT_JIS_2007 = "x-softbank-shift_jis-2007";     //
+    public static final String CHARSET_X_UNICODEBIG              = "x-UnicodeBig";                  //
+    public static final String CHARSET_X_UTF_16LE_BOM            = "x-UTF-16LE-BOM";                //
+    public static final String CHARSET_X_UTF16_OPPOSITEENDIAN    = "x-UTF16_OppositeEndian";        //
+    public static final String CHARSET_X_UTF16_PLATFORMENDIAN    = "x-UTF16_PlatformEndian";        //
+    public static final String CHARSET_X_UTF32_OPPOSITEENDIAN    = "x-UTF32_OppositeEndian";        //
+    public static final String CHARSET_X_UTF32_PLATFORMENDIAN    = "x-UTF32_PlatformEndian";        //
+
+    /*
+     * input 3D picture format list.
+     * defined by ChenXiaoChuan.
+     */
+    public static final int PICTURE_3D_MODE_NONE			= 0;
+    public static final int PICTURE_3D_MODE_DOUBLE_STREAM		= 1;
+    public static final int PICTURE_3D_MODE_SIDE_BY_SIDE		= 2;
+    public static final int PICTURE_3D_MODE_TOP_TO_BOTTOM		= 3;
+    public static final int PICTURE_3D_MODE_LINE_INTERLEAVE		= 4;
+    public static final int PICTURE_3D_MODE_COLUME_INTERLEAVE		= 5;
+
+    /**
+     * set the dimension type of the source file.
+     * <p>
+     *
+     * @param type the  3D picture format of the source file
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public native int setInputDimensionType(int type);
+
+    /**
+     * get the dimension type of the source file.
+     * <p>
+     *
+     * @return the 3D picture format of the source file. -1 means failed.
+     */
+    public native int getInputDimensionType();
+
+    /*
+     * 3D picture display method, defined how to display pictures.
+     * defined by ChenXiaoChuan.
+     */
+	public static final int DISPLAY_3D_MODE_2D = 0;
+	public static final int DISPLAY_3D_MODE_3D = 1;
+	public static final int DISPLAY_3D_MODE_HALF_PICTURE = 2;
+	public static final int DISPLAY_3D_MODE_ANAGLAGH = 3;
+
+    /**
+     * set display method of the 3D pictures.
+     * <p>
+     *
+	 * @param type the display method of the 3D pictures
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public native int setOutputDimensionType(int type);
+
+    /**
+     * get the dimension type of the output.
+     * <p>
+     *
+     * @return the dimension type of the output. -1 means failed.
+     */
+    public native int getOutputDimensionType();
+
+    /*
+     * anaglagh type list
+     */
+	public static final int ANAGLAGH_RED_BLUE		= 0;
+	public static final int ANAGLAGH_RED_GREEN		= 1;
+	public static final int ANAGLAGH_RED_CYAN		= 2;
+	public static final int ANAGLAGH_COLOR			= 3;
+	public static final int ANAGLAGH_HALF_COLOR		= 4;
+	public static final int ANAGLAGH_OPTIMIZED		= 5;
+	public static final int ANAGLAGH_YELLOW_BLUE		= 6;
+
+    /**
+     * set the anaglagh type of the output.
+     * <p>
+     *
+	 * @param type the anaglagh type of the output
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public native int setAnaglaghType(int type);
+
+    /**
+     * get the anaglagh type of the output.
+     * <p>
+     *
+     * @return the anaglagh type of the output. -1 means failed.
+     */
+    public native int getAnaglaghType();
+
+    /**
+     * get the video encode.
+     * <p>
+     *
+     * @return the name of the video encode. null means unknown.
+     */
+    public native String getVideoEncode();
+
+    /**
+     * get the video frame rate.
+     * <p>
+     *
+     * @return the video frame rate. <0 means unknown.
+     */
+    public native int getVideoFrameRate();
+
+    /**
+     * get the audio encode.
+     * <p>
+     *
+     * @return the name of the audio encode. null means unknown.
+     */
+    public native String getAudioEncode();
+
+    /**
+     * get the audio bit rate.
+     * <p>
+     *
+     * @return the audio bit rate. <0 means unknown.
+     */
+    public native int getAudioBitRate();
+
+    /**
+     * get the audio sample rate.
+     * <p>
+     *
+     * @return the audio sample rate. <0 means unknown.
+     */
+    public native int getAudioSampleRate();
+
+    private OnParse3dFileListener mOnParse3dFileListener = null;
+
+    public void setOnParse3dFileListener(OnParse3dFileListener listener){
+        mOnParse3dFileListener = listener;
+    }
+
+    public interface OnParse3dFileListener{
+        public int onParse3dFile(int type);
+    }
+
+    static private int parse3dFile(Object mediaplayer_ref, int type)
+    {
+        MediaPlayer mp = (MediaPlayer)((WeakReference)mediaplayer_ref).get();
+        if (mp == null) {
+            return 0;
+        }
+        if(mp.mOnParse3dFileListener != null){
+            return mp.mOnParse3dFileListener.onParse3dFile(type);
+        }
+
+        return 0;
+    }
+
+    /**
+     * enable or disable scale mode for playing video.
+     * <p>
+     *
+	 * @param enable if true, enable the scale mode, else disable the scale mode.
+	 * @param width  the expected width of the video. Only valid when enable.
+	 * @param height  the expected height of the video. Only valid when enable.
+     */
+    public native void enableScaleMode(boolean enable, int width, int height);
+
+    /**
+     * enable or disable VPP for playing video.
+     * <p>
+     *
+	 * @param enableVpp if true, enable VPP, else disable VPP.
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public static native int setVppGate(boolean enableVpp);
+
+    /**
+     * get the VPP's status.
+     * <p>
+     *
+     * @return the VPP's status.
+     */
+    public static native boolean getVppGate();
+
+    /**
+     * adjust the luma.
+     * <p>
+     *
+     * @param value the value of luma. value ranges 0~~4.
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public static native int setLumaSharp(int value);
+
+    /**
+     * get the value of the luma.
+     * <p>
+     *
+     * @return the value of the luma.
+     */
+    public static native int getLumaSharp();
+
+    /**
+     * adjust the chroma.
+     * <p>
+     *
+     * @param value the value of chroma. value ranges 0~~4.
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public static native int setChromaSharp(int value);
+
+    /**
+     * get the value of the chroma.
+     * <p>
+     *
+     * @return the value of the chroma.
+     */
+    public static native int getChromaSharp();
+
+    /**
+     * adjust the white extended.
+     * <p>
+     *
+     * @param value the value of white extended. value ranges 0~~4.
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public static native int setWhiteExtend(int value);
+
+    /**
+     * get the value of the white extended.
+     * <p>
+     *
+     * @return the value of the white extended.
+     */
+    public static native int getWhiteExtend();
+
+    /**
+     * adjust the black extended.
+     * <p>
+     *
+     * @param value the value of black extended. value ranges 0~~4.
+     * @return ==0 means successful, !=0 means failed.
+     */
+    public static native int setBlackExtend(int value);
+
+    /**
+     * get the value of the black extended.
+     * <p>
+     *
+     * @return the value of the black extended.
+     */
+    public static native int getBlackExtend();
 }

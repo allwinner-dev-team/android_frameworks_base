@@ -16,6 +16,7 @@ LOCAL_SRC_FILES:= \
     com_android_server_VibratorService.cpp \
     com_android_server_location_GpsLocationProvider.cpp \
     com_android_server_connectivity_Vpn.cpp \
+    com_android_server_DisplayManagerService.cpp \
     onload.cpp
 
 LOCAL_C_INCLUDES += \
@@ -55,6 +56,10 @@ endif
 
 ifeq ($(TARGET_HAS_DOCK_BATTERY),true)
     LOCAL_CFLAGS += -DHAS_DOCK_BATTERY
+endif
+
+ifeq ($(TARGET_BOARD_PLATFORM),sun4i)
+    LOCAL_CFLAGS += -DALLWINNER_HARDWARE
 endif
 
 LOCAL_MODULE:= libandroid_servers

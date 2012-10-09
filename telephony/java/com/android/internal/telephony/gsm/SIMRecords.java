@@ -540,7 +540,7 @@ public class SIMRecords extends IccRecords {
 
                 if (ar.exception != null) {
                     loge("Exception querying IMSI, Exception:" + ar.exception);
-                    break;
+//                    break;
                 }
 
                 imsi = (String) ar.result;
@@ -552,7 +552,7 @@ public class SIMRecords extends IccRecords {
                     imsi = null;
                 }
 
-                log("IMSI: " + /* imsi.substring(0, 6) +*/ "xxxxxxx");
+                log("IMSI: " + imsi /*.substring(0, 6) + "xxxxxxx"*/);
 
                 if (((mncLength == UNKNOWN) || (mncLength == 2)) &&
                         ((imsi != null) && (imsi.length() >= 6))) {

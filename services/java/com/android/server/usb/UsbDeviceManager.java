@@ -49,6 +49,8 @@ import android.os.UEventObserver;
 import android.provider.Settings;
 import android.util.Pair;
 import android.util.Slog;
+import android.os.PowerManager;
+
 
 import java.io.File;
 import java.io.FileDescriptor;
@@ -114,7 +116,9 @@ public class UsbDeviceManager {
     private boolean mAudioSourceEnabled;
     private Map<String, List<Pair<String, String>>> mOemModeMap;
     private String[] mAccessoryStrings;
-
+    private PowerManager.WakeLock wl;   
+    private int wlref = 0;
+	
     private class AdbSettingsObserver extends ContentObserver {
         public AdbSettingsObserver() {
             super(null);
@@ -163,7 +167,10 @@ public class UsbDeviceManager {
         initRndisAddress();
 
         readOemUsbOverrideConfig();
-
+		
+	PowerManager power = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);        
+        wl = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
+		
         // create a thread for our Handler
         HandlerThread thread = new HandlerThread("UsbDeviceManager",
                 Process.THREAD_PRIORITY_BACKGROUND);
@@ -227,7 +234,24 @@ public class UsbDeviceManager {
             setCurrentFunctions(functions, false);
         }
     }
-
+	
+	/* In usb device connected to pc host, we should create a partial wakelock to prevent go to standby*/
+    private void enableWakeLock(boolean enable){
+        if(enable){
+            Slog.d(TAG, "enable "+ TAG +" wakelock"+" wlref = "+ wlref);            
+            if(wlref==0){
+                wlref++;
+                wl.acquire();
+            }            
+        }else{
+            Slog.d(TAG, "disable "+ TAG +" wakelock"+" wlref = "+ wlref);              
+            if(wlref==1){
+                wl.release();
+                wlref--;
+            }
+        }
+    }
+    
     private static void initRndisAddress() {
         // configure RNDIS ethernet address based on our serial number using the same algorithm
         // we had been previously using in kernel board files
@@ -591,8 +615,12 @@ public class UsbDeviceManager {
                 case MSG_UPDATE_STATE:
                     mConnected = (msg.arg1 == 1);
                     mConfigured = (msg.arg2 == 1);
-                    updateUsbNotification();
+
+					enableWakeLock(mConnected);
+
+					updateUsbNotification();
                     updateAdbNotification();
+										
                     if (containsFunction(mCurrentFunctions,
                             UsbManager.USB_FUNCTION_ACCESSORY)) {
                         updateCurrentAccessory();

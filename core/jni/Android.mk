@@ -257,6 +257,10 @@ endif
 
 LOCAL_MODULE:= libandroid_runtime
 
+ifeq ($(TARGET_BOARD_PLATFORM),sun4i)
+	LOCAL_CFLAGS += -DALLWINNER_HARDWARE
+endif
+
 include $(BUILD_SHARED_LIBRARY)
 
 include $(call all-makefiles-under,$(LOCAL_PATH))

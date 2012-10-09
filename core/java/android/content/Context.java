@@ -1538,6 +1538,8 @@ public abstract class Context {
      * @see android.media.MediaRouter
      * @see #TELEPHONY_SERVICE
      * @see android.telephony.TelephonyManager
+     * @see #DISPLAY_SERVICE
+     * @see android.view.DisplayManager
      * @see #INPUT_METHOD_SERVICE
      * @see android.view.inputmethod.InputMethodManager
      * @see #UI_MODE_SERVICE
@@ -1827,6 +1829,16 @@ public abstract class Context {
      * @see android.telephony.TelephonyManager
      */
     public static final String TELEPHONY_SERVICE = "phone";
+
+	/**
+     * Use with {@link #getSystemService} to retrieve a
+     * {@link android.view.DisplayManager} for handling management the
+     * display features of the device.
+     *
+     * @see #getSystemService
+     * @see android.view.DisplayManager
+     */
+    public static final String DISPLAY_SERVICE = "display";
 
     /**
      * Use with {@link #getSystemService} to retrieve a

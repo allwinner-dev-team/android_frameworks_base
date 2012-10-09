@@ -60,6 +60,10 @@ LOCAL_C_INCLUDES += \
 
 LOCAL_CFLAGS +=
 
+ifeq ($(TARGET_BOARD_PLATFORM),sun4i)
+    LOCAL_CFLAGS += -DALLWINNER_HARDWARE
+endif
+
 LOCAL_LDLIBS := -lpthread
 
 LOCAL_MODULE:= libmedia_jni
